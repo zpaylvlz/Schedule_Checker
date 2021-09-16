@@ -22,26 +22,88 @@ namespace Schedule_Checker
         {
             InitializeComponent();
         }
-
-        private void Check_Lot(DataTable dt)
+        private void Check_Lot(DataTable dt, int column_number)
         {
             for (int i = 0; i < Lot_List.Count; i++)
             {
                 DataRow[] rows = dt.Select("LOT_ID = '" + Lot_List[i] + "'", "LAYER_SEQ ASC, OPERATION_SEQ ASC");
                 DataTable Search_Result = rows.CopyToDataTable();
-                DateTime Early_Prcs = DateTime.Parse(rows[0][9].ToString());
+                bool isFault = false;
+
+                //Check Move_In_Time
                 for (int j = 1; j < rows.Length; j++)
                 {
-                    DateTime Late_Prcs = DateTime.Parse(rows[j][9].ToString());
+                    DateTime Early_Prcs = DateTime.Parse(rows[j-1][column_number].ToString());
+                    DateTime Late_Prcs = DateTime.Parse(rows[j][column_number].ToString());
                     if (Early_Prcs > Late_Prcs)
                     {
-                        MessageBox.Show("Lot Time Invalid");
+                        isFault = true;
                     }
-                    Early_Prcs = Late_Prcs;
+                }
+               if (isFault)
+                {
+                    StreamWriter SW = new StreamWriter("Lot_Error_"+dt.Columns[column_number].ColumnName.ToString() + "_" + Lot_List[i] + ".csv", true, Encoding.UTF8);
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        SW.Write(dc.ColumnName);
+                        SW.Write(',');
+                    }
+                    SW.Write('\n');
+                    foreach (DataRow dr in Search_Result.Rows)
+                    {
+                        for (int dc = 0; dc < Search_Result.Columns.Count; dc++)
+                        {
+                            SW.Write(dr[dc].ToString());
+                            SW.Write(',');
+                        }
+                        SW.Write('\n');
+                    }
+                    SW.Close();
                 }
             }
-            MessageBox.Show("Done");
-            
+        }
+
+        private void Check_Lot_Row(DataTable dt)
+        {
+            for (int i = 0; i < Lot_List.Count; i++)
+            {
+                DataRow[] rows = dt.Select("LOT_ID = '" + Lot_List[i] + "'", "LAYER_SEQ ASC, OPERATION_SEQ ASC");
+                DataTable Search_Result = rows.CopyToDataTable();
+                bool isFault = false;
+
+                //Check Move_In_Time
+                for (int j = 0; j < rows.Length; j++)
+                {
+                    DateTime Check_In_Time = DateTime.Parse(rows[j][8].ToString());
+                    DateTime Move_In_Time = DateTime.Parse(rows[j][9].ToString());
+                    DateTime Move_Out_Time = DateTime.Parse(rows[j][10].ToString());
+                    DateTime Check_Out_Time = DateTime.Parse(rows[j][11].ToString());
+                    if (Check_In_Time > Move_In_Time || Move_In_Time > Move_Out_Time || Move_Out_Time > Check_Out_Time)
+                    {
+                        isFault = true;
+                    }
+                }
+                if (isFault)
+                {
+                    StreamWriter SW = new StreamWriter("Lot_Error_SelfTime" + Lot_List[i] + ".csv", true, Encoding.UTF8);
+                    foreach (DataColumn dc in dt.Columns)
+                    {
+                        SW.Write(dc.ColumnName);
+                        SW.Write(',');
+                    }
+                    SW.Write('\n');
+                    foreach (DataRow dr in Search_Result.Rows)
+                    {
+                        for (int dc = 0; dc < Search_Result.Columns.Count; dc++)
+                        {
+                            SW.Write(dr[dc].ToString());
+                            SW.Write(',');
+                        }
+                        SW.Write('\n');
+                    }
+                    SW.Close();
+                }
+            }
         }
 
         private void Check_EQP(DataTable dt)
@@ -61,7 +123,6 @@ namespace Schedule_Checker
                     }
                 }
             }
-            MessageBox.Show("Done");
         }
 
         private void Select_File(object sender, EventArgs e)
@@ -104,7 +165,11 @@ namespace Schedule_Checker
                         dt.Rows.Add(dr);
                     }
                     //DataVisualize.DataSource = dt;
-                    Check_Lot(dt);
+                    Check_Lot(dt, 8);
+                    Check_Lot(dt, 9);
+                    Check_Lot(dt, 10);
+                    Check_Lot(dt, 11);
+                    Check_Lot_Row(dt);
                     Check_EQP(dt);
                 }
             }
