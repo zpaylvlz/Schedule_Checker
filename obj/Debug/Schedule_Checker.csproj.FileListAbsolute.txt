@@ -1,0 +1,11 @@
+C:\Users\zpay\source\repos\Schedule_Checker\bin\Debug\Schedule_Checker.exe.config
+C:\Users\zpay\source\repos\Schedule_Checker\bin\Debug\Schedule_Checker.exe
+C:\Users\zpay\source\repos\Schedule_Checker\bin\Debug\Schedule_Checker.pdb
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.csprojAssemblyReference.cache
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.csproj.ResolveComReference.cache
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.Form1.resources
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.Properties.Resources.resources
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.csproj.GenerateResource.cache
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.csproj.CoreCompileInputs.cache
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.exe
+C:\Users\zpay\source\repos\Schedule_Checker\obj\Debug\Schedule_Checker.pdb
