@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
-using Microsoft.Office;
 
 namespace Schedule_Checker
 {
@@ -16,14 +15,15 @@ namespace Schedule_Checker
     {
         Button BtnSelect;
         DataGridView DataVisualize;
-        List<string> Lot_List = new List<string>();
-        List<string> EQP_List = new List<string>();
+        List<string> Lot_List;
+        List<string> EQP_List;
         public Form1()
         {
             InitializeComponent();
         }
         private void Check_Lot(DataTable dt, int column_number)
         {
+            List<string> Error_Seq = new List<string>();
             for (int i = 0; i < Lot_List.Count; i++)
             {
                 DataRow[] rows = dt.Select("LOT_ID = '" + Lot_List[i] + "'", "LAYER_SEQ ASC, OPERATION_SEQ ASC");
@@ -35,14 +35,16 @@ namespace Schedule_Checker
                 {
                     DateTime Early_Prcs = DateTime.Parse(rows[j-1][column_number].ToString());
                     DateTime Late_Prcs = DateTime.Parse(rows[j][column_number].ToString());
-                    if (Early_Prcs > Late_Prcs)
+                    int Date_Compare = DateTime.Compare(Early_Prcs, Late_Prcs);
+                    if (Date_Compare > 0)
                     {
+                        Error_Seq.Add("Layer_SEQ: " + rows[j - 1][6].ToString() + "& Operation_SEQ: " + rows[j - 1][7].ToString());
                         isFault = true;
                     }
                 }
                if (isFault)
                 {
-                    StreamWriter SW = new StreamWriter("Lot_Error_"+dt.Columns[column_number].ColumnName.ToString() + "_" + Lot_List[i] + ".csv", true, Encoding.UTF8);
+                    StreamWriter SW = new StreamWriter("Lot_Error_"+dt.Columns[column_number].ColumnName.ToString() + "_" + Lot_List[i] + ".csv", false, Encoding.UTF8);
                     foreach (DataColumn dc in dt.Columns)
                     {
                         SW.Write(dc.ColumnName);
@@ -58,6 +60,10 @@ namespace Schedule_Checker
                         }
                         SW.Write('\n');
                     }
+                    foreach(string s in Error_Seq)
+                    {
+                        SW.WriteLine(s);
+                    }
                     SW.Close();
                 }
             }
@@ -67,6 +73,7 @@ namespace Schedule_Checker
         {
             for (int i = 0; i < Lot_List.Count; i++)
             {
+                List<string> Error_Seq = new List<string>();
                 DataRow[] rows = dt.Select("LOT_ID = '" + Lot_List[i] + "'", "LAYER_SEQ ASC, OPERATION_SEQ ASC");
                 DataTable Search_Result = rows.CopyToDataTable();
                 bool isFault = false;
@@ -78,14 +85,18 @@ namespace Schedule_Checker
                     DateTime Move_In_Time = DateTime.Parse(rows[j][9].ToString());
                     DateTime Move_Out_Time = DateTime.Parse(rows[j][10].ToString());
                     DateTime Check_Out_Time = DateTime.Parse(rows[j][11].ToString());
-                    if (Check_In_Time > Move_In_Time || Move_In_Time > Move_Out_Time || Move_Out_Time > Check_Out_Time)
+                    int Date_Compare_Check2Move = DateTime.Compare(Check_In_Time, Move_In_Time);
+                    int Date_Compare_MoveInOut = DateTime.Compare(Move_In_Time, Move_Out_Time);
+                    int Date_Compare_Move2Check = DateTime.Compare(Move_Out_Time, Check_Out_Time);
+                    if (Date_Compare_Check2Move > 0 || Date_Compare_MoveInOut > 0 || Date_Compare_Move2Check > 0)
                     {
+                        Error_Seq.Add("Layer_SEQ: " + rows[j][6].ToString() + "& Operation_SEQ: " + rows[j][7].ToString());
                         isFault = true;
                     }
                 }
                 if (isFault)
                 {
-                    StreamWriter SW = new StreamWriter("Lot_Error_SelfTime" + Lot_List[i] + ".csv", true, Encoding.UTF8);
+                    StreamWriter SW = new StreamWriter("Lot_Error_SelfTime_" + Lot_List[i] + ".csv", false, Encoding.UTF8);
                     foreach (DataColumn dc in dt.Columns)
                     {
                         SW.Write(dc.ColumnName);
@@ -101,6 +112,10 @@ namespace Schedule_Checker
                         }
                         SW.Write('\n');
                     }
+                    foreach (string s in Error_Seq)
+                    {
+                        SW.WriteLine(s);
+                    }
                     SW.Close();
                 }
             }
@@ -108,21 +123,57 @@ namespace Schedule_Checker
 
         private void Check_EQP(DataTable dt)
         {
-            for (int i = 0; i < EQP_List.Count; i++)
-            {
-                DataRow[] rows = dt.Select("TO_EQP_ID = '" + EQP_List[i] + "'", "MOVE_IN_TIME ASC");
-                DataTable Search_Result = rows.CopyToDataTable();
-                
-                for (int j = 1; j < rows.Length; j++)
-                {
-                    DateTime Last_Prcs_Move_Out = DateTime.Parse(rows[j-1][10].ToString());
-                    DateTime Current_Prcs_Move_In = DateTime.Parse(rows[j][9].ToString());
-                    if (Last_Prcs_Move_Out > Current_Prcs_Move_In)
+            //DataRow[] rows = dt.Select("TO_EQP_ID = '" + EQP_List[0] + "'", "Move_IN_TIME ASC");
+            //DataTable Search_Result = rows.CopyToDataTable();
+            //DataVisualize.DataSource = Search_Result;
+             for (int i = 0; i < EQP_List.Count; i++)
+             {
+                    DataRow[] rows = dt.Select("TO_EQP_ID = '" + EQP_List[i] + "'", "MOVE_IN_TIME ASC");
+                    DataTable Search_Result = rows.CopyToDataTable();
+                    bool isFault = false;
+                    List<string> Error_Seq = new List<string>();
+                    for (int j = 1; j < rows.Length; j++)
                     {
-                        MessageBox.Show("EQP Time Invalid");
+                        DateTime Last_Prcs_Move_In = DateTime.Parse(rows[j - 1][9].ToString());
+                        DateTime Last_Prcs_Move_Out = DateTime.Parse(rows[j - 1][10].ToString());
+                        DateTime Current_Prcs_Move_In = DateTime.Parse(rows[j][9].ToString());
+
+                        int Date_Compare_Queue = DateTime.Compare(Last_Prcs_Move_Out, Current_Prcs_Move_In);
+                        int Date_Compare_In = DateTime.Compare(Last_Prcs_Move_In, Current_Prcs_Move_In);
+                        if (Date_Compare_Queue > 0 || Date_Compare_In > 0)
+                        {
+                            isFault = true;
+                            Error_Seq.Add("Index: " + (j-1).ToString() + " & Layer_SEQ: " + rows[j - 1][6].ToString() + " & Operation_SEQ: " + rows[j - 1][7].ToString());
+                        }
+
+                        #region write file
+                        if (isFault)
+                        {
+                            StreamWriter SW = new StreamWriter("EQP_Error_Time_Overlap_" + EQP_List[i] + ".csv", false, Encoding.UTF8);
+                            foreach (DataColumn dc in dt.Columns)
+                            {
+                                SW.Write(dc.ColumnName);
+                                SW.Write(',');
+                            }
+                            SW.Write('\n');
+                            foreach (DataRow dr in Search_Result.Rows)
+                            {
+                                for (int dc = 0; dc < Search_Result.Columns.Count; dc++)
+                                {
+                                    SW.Write(dr[dc].ToString());
+                                    SW.Write(',');
+                                }
+                                SW.Write('\n');
+                            }
+                            foreach (string s in Error_Seq)
+                            {
+                                SW.WriteLine(s);
+                            }
+                            SW.Close();
+                        }
+                        #endregion
                     }
-                }
-            }
+             }
         }
 
         private void Select_File(object sender, EventArgs e)
@@ -135,6 +186,9 @@ namespace Schedule_Checker
                 
                 using (StreamReader sr = new StreamReader(OF.FileName.ToString()))
                 {
+                    dt = new DataTable();
+                    Lot_List = new List<string>();
+                    EQP_List = new List<string>();
                     string[] headers = sr.ReadLine().Split(',');
                     foreach (string header in headers)
                     {
@@ -164,7 +218,6 @@ namespace Schedule_Checker
                         }
                         dt.Rows.Add(dr);
                     }
-                    //DataVisualize.DataSource = dt;
                     Check_Lot(dt, 8);
                     Check_Lot(dt, 9);
                     Check_Lot(dt, 10);
