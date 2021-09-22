@@ -30,7 +30,8 @@ namespace Schedule_Checker
                 DataTable Search_Result = rows.CopyToDataTable();
                 bool isFault = false;
 
-                //Check Move_In_Time
+                //Check Time By Selected column
+                
                 for (int j = 1; j < rows.Length; j++)
                 {
                     DateTime Early_Prcs = DateTime.Parse(rows[j-1][column_number].ToString());
@@ -78,7 +79,7 @@ namespace Schedule_Checker
                 DataTable Search_Result = rows.CopyToDataTable();
                 bool isFault = false;
 
-                //Check Move_In_Time
+                //Check Time Sequence of a row
                 for (int j = 0; j < rows.Length; j++)
                 {
                     DateTime Check_In_Time = DateTime.Parse(rows[j][8].ToString());
@@ -176,6 +177,56 @@ namespace Schedule_Checker
              }
         }
 
+        private void Check_Early_Enter(DataTable dt)
+        {
+            //Check if there's any process check in earlier but move in later then next process
+            for (int i = 0; i < EQP_List.Count; i++)
+            {
+                DataRow[] rows = dt.Select("TO_EQP_ID = '" + EQP_List[i] + "'", "MOVE_IN_TIME ASC");
+                DataTable Search_Result = rows.CopyToDataTable();
+                bool isFault = false;
+                List<string> Error_Seq = new List<string>();
+                for (int j = 1; j < rows.Length; j++)
+                {
+                    DateTime Last_Prcs_Check_In = DateTime.Parse(rows[j - 1][8].ToString());
+                    DateTime Current_Prcs_Check_In = DateTime.Parse(rows[j][8].ToString());
+
+                    int Date_Compare_Queue = DateTime.Compare(Last_Prcs_Check_In, Current_Prcs_Check_In);
+                    if (Date_Compare_Queue > 0)
+                    {
+                        isFault = true;
+                        Error_Seq.Add("Index: " + (j - 1).ToString() + " & Layer_SEQ: " + rows[j - 1][6].ToString() + " & Operation_SEQ: " + rows[j - 1][7].ToString());
+                    }
+
+                    #region write file
+                    if (isFault)
+                    {
+                        StreamWriter SW = new StreamWriter("EQP_Check_In_Earlier_" + EQP_List[i] + ".csv", false, Encoding.UTF8);
+                        foreach (DataColumn dc in dt.Columns)
+                        {
+                            SW.Write(dc.ColumnName);
+                            SW.Write(',');
+                        }
+                        SW.Write('\n');
+                        foreach (DataRow dr in Search_Result.Rows)
+                        {
+                            for (int dc = 0; dc < Search_Result.Columns.Count; dc++)
+                            {
+                                SW.Write(dr[dc].ToString());
+                                SW.Write(',');
+                            }
+                            SW.Write('\n');
+                        }
+                        foreach (string s in Error_Seq)
+                        {
+                            SW.WriteLine(s);
+                        }
+                        SW.Close();
+                    }
+                    #endregion
+                }
+            }
+        }
         private void Select_File(object sender, EventArgs e)
         {
             DataTable dt = new DataTable();
@@ -224,6 +275,7 @@ namespace Schedule_Checker
                     Check_Lot(dt, 11);
                     Check_Lot_Row(dt);
                     Check_EQP(dt);
+                    Check_Early_Enter(dt);
                 }
             }
         }
